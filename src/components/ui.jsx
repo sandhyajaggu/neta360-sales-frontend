@@ -129,12 +129,17 @@ export function Field({ label, error, hint, children, className = '' }) {
   );
 }
 
+// Options may be strings, { value, label } objects, or { group, options } for an <optgroup>.
+const renderOption = (o) => (typeof o === 'string'
+  ? <option key={o} value={o}>{o}</option>
+  : <option key={o.value} value={o.value}>{o.label}</option>);
+
 export const Select = ({ options, value, onChange, placeholder, ...rest }) => (
   <select className="input" value={value ?? ''} onChange={(e) => onChange(e.target.value)} {...rest}>
     {placeholder && <option value="">{placeholder}</option>}
-    {options.map((o) => (typeof o === 'string'
-      ? <option key={o} value={o}>{o}</option>
-      : <option key={o.value} value={o.value}>{o.label}</option>))}
+    {options.map((o) => (o.group
+      ? <optgroup key={o.group} label={o.group}>{o.options.map(renderOption)}</optgroup>
+      : renderOption(o)))}
   </select>
 );
 
