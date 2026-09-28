@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Modal, Field, Select, Button } from './ui';
 import { useAuth, useData, useToast, leadLabel } from '../context/AppContext';
 import { SOURCES, CUSTOMER_TYPES, STATES, TIMELINES, BUDGETS, USERS, STAGES, LOST_REASONS, PLAYBOOKS, day } from '../data/mock';
+import { CONSTITUENCIES } from '../data/geo';
 
 export function AddLeadModal({ onClose, onCreated }) {
   const { user, role } = useAuth();
@@ -13,7 +14,16 @@ export function AddLeadModal({ onClose, onCreated }) {
     score: 50, owner: role === 'bde' ? user.id : '', followUp: day(1), nextAction: 'First call',
   });
   const [errors, setErrors] = useState({});
+  // Whether District / Constituency are being typed instead of picked from the list.
+  const [manual, setManual] = useState({ district: false, constituency: false });
   const set = (k) => (v) => setF((x) => ({ ...x, [k]: v?.target ? v.target.value : v }));
+
+  const districts = CONSTITUENCIES[f.state];
+  const seats = districts && !manual.district ? districts[f.district] : null;
+  const setState = (state) => { setF((x) => ({ ...x, state, district: '', constituency: '' })); setManual({ district: false, constituency: false }); };
+  const setDistrict = (district) => { setF((x) => ({ ...x, district, constituency: '' })); setManual((m) => ({ ...m, constituency: false })); };
+  const typeDistrict = (on) => { setF((x) => ({ ...x, district: '', constituency: '' })); setManual({ district: on, constituency: false }); };
+  const typeConstituency = (on) => { setF((x) => ({ ...x, constituency: '' })); setManual((m) => ({ ...m, constituency: on })); };
 
   const save = () => {
     const e = {};
@@ -38,9 +48,23 @@ export function AddLeadModal({ onClose, onCreated }) {
         <Field label="Customer type"><Select options={CUSTOMER_TYPES} value={f.type} onChange={set('type')} /></Field>
         <Field label="Contact person"><input className="input" value={f.contact} onChange={set('contact')} placeholder="R. Suresh" /></Field>
         <Field label="Designation"><input className="input" value={f.designation} onChange={set('designation')} placeholder="PA / Secretary" /></Field>
-        <Field label="Constituency" error={errors.constituency}><input className="input" value={f.constituency} onChange={set('constituency')} /></Field>
-        <Field label="District"><input className="input" value={f.district} onChange={set('district')} /></Field>
-        <Field label="State"><Select options={STATES} value={f.state} onChange={set('state')} /></Field>
+        <div className="form-row-3">
+          <Field label="State"><Select options={STATES} value={f.state} onChange={setState} /></Field>
+          <Field label="District" hint={districts && !manual.district ? `${Object.keys(districts).length} districts` : null}>
+            {districts
+              ? <PickOrType options={Object.keys(districts)} value={f.district} onChange={setDistrict} placeholder="Select district"
+                  manual={manual.district} onManual={typeDistrict} typePlaceholder="Type district" />
+              : <input className="input" value={f.district} onChange={set('district')} placeholder="Type district" />}
+          </Field>
+          <Field label="Constituency" error={errors.constituency}
+            hint={seats ? `${seats.length} constituencies in ${f.district}` : districts && manual.district ? 'District typed manually, so type the constituency too' : null}>
+            {districts && !manual.district
+              ? <PickOrType options={seats || []} value={f.constituency} onChange={set('constituency')}
+                  placeholder={f.district ? 'Select constituency' : 'Select district first'} disabled={!f.district}
+                  manual={manual.constituency} onManual={typeConstituency} typePlaceholder="Type constituency" />
+              : <input className="input" value={f.constituency} onChange={set('constituency')} placeholder="Type constituency" />}
+          </Field>
+        </div>
         <Field label="Lead source"><Select options={SOURCES} value={f.source} onChange={set('source')} /></Field>
         <Field label="Mobile / WhatsApp" error={errors.mobile}><input className="input" inputMode="numeric" value={f.mobile} onChange={set('mobile')} placeholder="98480 12345" /></Field>
         <Field label="Email"><input className="input" type="email" value={f.email} onChange={set('email')} /></Field>
@@ -56,6 +80,28 @@ export function AddLeadModal({ onClose, onCreated }) {
         <Field label="Next action"><input className="input" value={f.nextAction} onChange={set('nextAction')} /></Field>
       </div>
     </Modal>
+  );
+}
+
+const MANUAL = '__manual__';
+
+// A dropdown whose last option switches to a text box for names missing from the list.
+function PickOrType({ options, value, onChange, placeholder, disabled, manual, onManual, typePlaceholder }) {
+  if (manual) {
+    return (
+      <>
+        <input className="input" value={value} onChange={(e) => onChange(e.target.value)} placeholder={typePlaceholder} autoFocus />
+        <button type="button" className="link small" onClick={() => onManual(false)}>Back to list</button>
+      </>
+    );
+  }
+  return (
+    <select className="input" value={value} disabled={disabled}
+      onChange={(e) => (e.target.value === MANUAL ? onManual(true) : onChange(e.target.value))}>
+      <option value="">{placeholder}</option>
+      {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      {!disabled && <option value={MANUAL}>+ Not in list, type manually</option>}
+    </select>
   );
 }
 

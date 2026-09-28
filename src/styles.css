@@ -150,6 +150,8 @@ p { margin: 0; line-height: 1.5; }
 .cols-lead { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 380px; }
 .cols-onb { grid-template-columns: 300px minmax(0, 1fr) 320px; }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.form-row-3 { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: inherit; }
+.form-row-3 .link { align-self: flex-start; }
 .form-grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
 /* Forms */
@@ -441,7 +443,7 @@ span.mod { cursor: default; }
   .chevrons-scroll { overflow-x: auto; }
   .chevrons, .chevron-conv { min-width: 620px; }
   .kpi-row, .kpi-row.kpi-6, .kpi-row.kpi-5, .kpi-row.kpi-4, .grid-6, .grid-2, .cols-3-bh, .cols-bottom-bh, .cols-lead, .form-grid, .role-grid { grid-template-columns: minmax(0, 1fr) 1fr; }
-  .form-grid, .role-grid, .cols-3-bh, .cols-lead { grid-template-columns: minmax(0, 1fr); }
+  .form-grid, .role-grid, .cols-3-bh, .cols-lead, .form-row-3 { grid-template-columns: minmax(0, 1fr); }
   .stage-strip { overflow-x: auto; }
   .stage-block { min-width: 76px; }
   .stage-conv { display: none; }
