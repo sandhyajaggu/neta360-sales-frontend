@@ -50,6 +50,7 @@ export default function App() {
         <Route path="/support" element={<Guard><CustomerSupport /></Guard>} />
         <Route path="/onboarding" element={<Guard><Onboarding /></Guard>} />
         <Route path="/tech" element={<Guard><TechSupport /></Guard>} />
+        <Route path="/follow-ups" element={<Guard><Navigate to="/leads?tab=due" replace /></Guard>} />
         {Object.entries(PLACEHOLDER_PAGES).map(([path, title]) => (
           <Route key={path} path={path} element={<Guard><ComingSoon title={title} /></Guard>} />
         ))}

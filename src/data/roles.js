@@ -2,6 +2,8 @@ import {
   LayoutDashboard, Users, Columns3, MonitorPlay, FileText, UsersRound, Headset,
   ClipboardCheck, Server, Sun, Boxes, House, User, Building2, Contact, Target,
   CalendarCheck, CalendarDays, Presentation, FilePenLine, ChartColumn, UserCog, Settings,
+  PhoneCall, UserPlus, Flag, FileCheck, FileChartColumn, Inbox, GraduationCap, Settings2, BookOpen,
+  Ticket, Timer, RefreshCw, MessageSquare, Bug, CircleArrowUp, Activity, Plug, Rocket, Shield,
 } from 'lucide-react';
 
 export const ROLES = {
@@ -28,12 +30,30 @@ export const ACCESS = {
   '/tech': ['ts', 'bh'],
   '/organizations': ['bh'],
   '/contacts': ['bh'],
-  '/activities': ['bh'],
-  '/calendar': ['bh'],
+  '/activities': ['bh', 'bde'],
+  '/calendar': ['bh', 'bde'],
   '/contracts': ['bh'],
-  '/customers': ['bh'],
-  '/reports': ['bh'],
+  '/customers': ['bh', 'cs'],
+  '/reports': ['bh', 'bdm'],
   '/settings': ['bh'],
+  '/follow-ups': ['bde'],
+  '/allocation': ['bdm', 'bh'],
+  '/performance': ['bdm', 'bh'],
+  '/targets': ['bdm', 'bh'],
+  '/requests': ['ps', 'bh'],
+  '/trainings': ['ps', 'bh'],
+  '/configurations': ['ps', 'bh'],
+  '/knowledge-base': ['ps', 'bh'],
+  '/tickets': ['cs', 'bh'],
+  '/sla': ['cs', 'bh'],
+  '/renewals': ['cs', 'bh'],
+  '/feedback': ['cs', 'bh'],
+  '/issues': ['ts', 'bh'],
+  '/escalations': ['ts', 'bh'],
+  '/system-health': ['ts', 'bh'],
+  '/integrations': ['ts', 'bh'],
+  '/deployments': ['ts', 'bh'],
+  '/security': ['ts', 'bh'],
 };
 
 // Business Head menu, in the order of the Neta360 dashboard design.
@@ -54,6 +74,58 @@ const BH_NAV = [
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
+// Menus for the other roles, limited to what each role is allowed to open.
+const ROLE_NAV = {
+  bde: [
+    { to: '/my-day', label: 'Dashboard', icon: House },
+    { to: '/leads', label: 'My Leads', icon: User },
+    { to: '/follow-ups', label: 'Follow-ups', icon: PhoneCall },
+    { to: '/pipeline', label: 'My Pipeline', icon: Target },
+    { to: '/demos', label: 'Demos', icon: Presentation },
+    { to: '/proposals', label: 'Proposals', icon: FileText },
+    { to: '/calendar', label: 'Calendar', icon: CalendarDays },
+    { to: '/activities', label: 'Activities', icon: CalendarCheck },
+  ],
+  bdm: [
+    { to: '/team', label: 'Dashboard', icon: House },
+    { to: '/leads', label: 'Team Leads', icon: Users },
+    { to: '/pipeline', label: 'Pipeline', icon: Target },
+    { to: '/allocation', label: 'Lead Allocation', icon: UserPlus },
+    { to: '/performance', label: 'Team Performance', icon: ChartColumn },
+    { to: '/targets', label: 'Targets', icon: Flag },
+    { to: '/demos', label: 'Demos', icon: Presentation },
+    { to: '/proposals', label: 'Proposal Approvals', icon: FileCheck },
+    { to: '/reports', label: 'Reports', icon: FileChartColumn },
+  ],
+  ps: [
+    { to: '/product', label: 'Dashboard', icon: House },
+    { to: '/requests', label: 'Product Requests', icon: Inbox },
+    { to: '/demos', label: 'Demos', icon: Presentation },
+    { to: '/trainings', label: 'Trainings', icon: GraduationCap },
+    { to: '/onboarding', label: 'Onboarding', icon: ClipboardCheck },
+    { to: '/configurations', label: 'Configurations', icon: Settings2 },
+    { to: '/knowledge-base', label: 'Knowledge Base', icon: BookOpen },
+  ],
+  cs: [
+    { to: '/support', label: 'Dashboard', icon: House },
+    { to: '/tickets', label: 'Tickets', icon: Ticket },
+    { to: '/customers', label: 'Customers', icon: Users },
+    { to: '/onboarding', label: 'Onboarding', icon: ClipboardCheck },
+    { to: '/sla', label: 'SLA', icon: Timer },
+    { to: '/renewals', label: 'Renewals', icon: RefreshCw },
+    { to: '/feedback', label: 'Feedback', icon: MessageSquare },
+  ],
+  ts: [
+    { to: '/tech', label: 'Dashboard', icon: House },
+    { to: '/issues', label: 'Issues & Bugs', icon: Bug },
+    { to: '/escalations', label: 'Escalated Tickets', icon: CircleArrowUp },
+    { to: '/system-health', label: 'System Health', icon: Activity },
+    { to: '/integrations', label: 'Integrations', icon: Plug },
+    { to: '/deployments', label: 'Deployments', icon: Rocket },
+    { to: '/security', label: 'Security', icon: Shield },
+  ],
+};
+
 // Pages that exist as placeholders until they are designed.
 export const PLACEHOLDER_PAGES = {
   '/organizations': 'Organizations',
@@ -64,6 +136,23 @@ export const PLACEHOLDER_PAGES = {
   '/customers': 'Customers',
   '/reports': 'Reports',
   '/settings': 'Settings',
+  '/allocation': 'Lead Allocation',
+  '/performance': 'Team Performance',
+  '/targets': 'Targets',
+  '/requests': 'Product Requests',
+  '/trainings': 'Trainings',
+  '/configurations': 'Configurations',
+  '/knowledge-base': 'Knowledge Base',
+  '/tickets': 'Tickets',
+  '/sla': 'SLA',
+  '/renewals': 'Renewals',
+  '/feedback': 'Feedback',
+  '/issues': 'Issues & Bugs',
+  '/escalations': 'Escalated Tickets',
+  '/system-health': 'System Health',
+  '/integrations': 'Integrations',
+  '/deployments': 'Deployments',
+  '/security': 'Security',
 };
 
 const ALL_NAV = [
@@ -82,6 +171,7 @@ const ALL_NAV = [
 
 export const navFor = (role) => {
   if (role === 'bh') return BH_NAV;
+  if (ROLE_NAV[role]) return ROLE_NAV[role];
   const items = ALL_NAV.filter((n) => ACCESS[n.to].includes(role));
   // Put the role's home first.
   const home = ROLES[role].home;

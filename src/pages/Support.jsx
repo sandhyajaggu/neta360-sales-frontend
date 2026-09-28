@@ -1,13 +1,14 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import {
-  AlertTriangle, BookOpen, Check, CheckCircle2, Clock, Code2, Inbox, KeyRound, Mail, MessageCircle, MonitorPlay,
-  Plus, RefreshCw, Rocket, Server, ShieldCheck, Users,
+  Activity, Bug, Check, CheckCircle2, Clock, GraduationCap, Inbox, MonitorPlay,
+  Plus, RefreshCw, Rocket, Server, ShieldCheck, Ticket,
 } from 'lucide-react';
-import { Badge, Button, Card, Field, IconTile, Kpi, KV, Modal, PageHead, Progress, Select } from '../components/ui';
-import { useAuth, useData, useToast } from '../context/AppContext';
+import { BarRow, Badge, Button, Card, ColorKpi, DashHero, DashItem, Field, KV, Modal, PageHead, Progress, Select } from '../components/ui';
+import { useAuth, useData, useToast, leadLabel } from '../context/AppContext';
 import { ONBOARDING_STEPS, SYSTEM_HEALTH, day } from '../data/mock';
-import { firstName, fmtDate, relDay, userName } from '../utils/format';
+import { firstName, fmtDate, greeting, relDay, TODAY, userName } from '../utils/format';
 
 const PRI = { High: '#B91C1C', Critical: '#B91C1C', Medium: '#B45309', Low: '#0B6B3A' };
 const ST = { Open: '#1D4ED8', 'In progress': '#B45309', Resolved: '#0B6B3A', New: '#1D4ED8', Scheduled: '#6D28D9', Escalated: '#B91C1C', 'Waiting on vendor': '#6D28D9' };
@@ -21,31 +22,27 @@ function StatusSelect({ value, options, onChange, label }) {
   );
 }
 
-function ListRows({ items }) {
-  return (
-    <ul className="list">
-      {items.map(([Icon, color, title, sub, badge, bc]) => (
-        <li key={title}><IconTile icon={Icon} color={color} size={32} /><span className="grow"><b>{title}</b><span className="muted small">{sub}</span></span>{badge && <Badge color={bc}>{badge}</Badge>}</li>
-      ))}
-    </ul>
-  );
-}
-
 // ---------------------------------------------------------------- Product Support
 export function ProductSupport() {
-  const { requests, demos, dispatch } = useData();
+  const { requests, demos, leads, customers, dispatch } = useData();
+  const { user, role } = useAuth();
   const toast = useToast();
+  const t = TODAY();
+  // Product specialists see the demos they run; the Business Head sees all of them.
+  const myDemos = demos.filter((d) => d.status === 'Scheduled' && d.date >= t && (role !== 'ps' || d.conductedBy === user.id))
+    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
   return (
     <>
-      <PageHead title="Product support dashboard" sub="Product demos, training, configuration and feature guidance." />
-      <div className="kpi-row kpi-4">
-        <Kpi icon={Inbox} label="New requests" value={requests.filter((r) => r.status === 'New').length} color="#1D4ED8" />
-        <Kpi icon={Clock} label="In progress" value={requests.filter((r) => ['In progress', 'Scheduled'].includes(r.status)).length} color="#B45309" />
-        <Kpi icon={CheckCircle2} label="Resolved" value={requests.filter((r) => r.status === 'Resolved').length} color="#0B6B3A" />
-        <Kpi icon={MonitorPlay} label="Demos scheduled" value={demos.filter((d) => d.status === 'Scheduled').length} delta={`${demos.filter((d) => d.status === 'Completed').length} completed`} color="#6D28D9" />
+      <DashHero title="Product Support" greeting={`${greeting()}, ${user.name.split(' ')[0]}!`} sub="Product demos, training, configuration and feature guidance." />
+      <div className="kpi-row kpi-5">
+        <ColorKpi icon={Inbox} bg="#E8F1FC" color="#2A7DE1" value={requests.filter((r) => r.status === 'New').length} label="New Requests" note={`${requests.filter((r) => r.due === t).length} due today`} />
+        <ColorKpi icon={Clock} bg="#FDF6D8" color="#F5B819" value={requests.filter((r) => ['In progress', 'Scheduled'].includes(r.status)).length} label="In Progress" note={`${requests.filter((r) => r.status === 'Escalated').length} escalated`} />
+        <ColorKpi icon={CheckCircle2} bg="#E6F5EA" color="#2FA84F" value={requests.filter((r) => r.status === 'Resolved').length} label="Resolved" note="Requests closed" />
+        <ColorKpi icon={MonitorPlay} bg="#F1EBFB" color="#8A5CD8" value={myDemos.length} label="Demos Scheduled" note={`${myDemos.filter((d) => d.date === t).length} today`} />
+        <ColorKpi icon={GraduationCap} bg="#FDEBDC" color="#F07A22" value={TRAININGS.length} label="Trainings This Week" note={`${TRAININGS.reduce((a, [, , n]) => a + n, 0)} users`} />
       </div>
       <div className="cols cols-main-side">
-        <Card title="Product requests">
+        <Card title="Product Requests">
           <div className="table-wrap">
             <table className="table">
               <thead><tr><th>Request</th><th>Client</th><th>Type</th><th>Owner</th><th>Due</th><th>Status</th></tr></thead>
@@ -61,34 +58,57 @@ export function ProductSupport() {
             </table>
           </div>
         </Card>
-        <Card title="Feature feedback themes" action={<span className="chip">Last 30 days</span>}>
+        <Card title={role === 'ps' ? 'Demos Assigned to Me' : 'Upcoming Demos'}>
+          {myDemos.length === 0 ? <p className="muted">No demos scheduled.</p> : (
+            <ul className="dash-list">
+              {myDemos.slice(0, 5).map((d) => {
+                const lead = leads.find((l) => l.id === d.leadId);
+                return (
+                  <li key={d.id}>
+                    <Link to={`/leads/${d.leadId}`} className="dash-row">
+                      <span className="dash-time">{d.date === t ? 'Today' : fmtDate(d.date)}<br />{d.time}</span>
+                      <span className="dash-w">{leadLabel(lead)}<small>{d.type} · {d.playbook} · booked by {firstName(lead?.owner)}</small></span>
+                      <span className="dash-tag" style={{ background: d.date === t ? '#E6F5EA' : '#FEF3C7', color: d.date === t ? '#166534' : '#92400E' }}>{d.date === t ? 'Today' : 'Prep'}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+      </div>
+      <div className="cols dash-eq">
+        <Card title="Feature Feedback Themes" action={<span className="chip">Last 30 days</span>}>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={[['Grievance', 34], ['WhatsApp', 28], ['Booth', 21], ['Reports', 17], ['Mobile', 12], ['AI', 9]].map(([n, v]) => ({ n, v }))} margin={{ top: 16, left: -24, right: 0 }}>
               <XAxis dataKey="n" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} interval={0} />
               <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
               <Tooltip cursor={{ fill: '#F6F5F1' }} />
               <Bar dataKey="v" name="Mentions" radius={[6, 6, 2, 2]} label={{ position: 'top', fontSize: 11 }}>
-                {['#0B6B3A', '#0F766E', '#1D4ED8', '#6D28D9', '#EA6A1F', '#9CA3AF'].map((c) => <Cell key={c} fill={c} />)}
+                {['#2A7DE1', '#2FA84F', '#F07A22', '#8A5CD8', '#0F9F8F', '#9AA3AF'].map((c) => <Cell key={c} fill={c} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </Card>
-      </div>
-      <div className="cols cols-2">
-        <Card title="Knowledge base">
-          <ListRows items={[[BookOpen, '#0B6B3A', 'Run the MLA demo in 10 minutes', 'Playbook', 'Pinned', '#0B6B3A'], [BookOpen, '#1D4ED8', 'Configure mandals, wards and booths', 'Guide · 12 min read', 'Guide', '#1D4ED8'], [BookOpen, '#6D28D9', 'Field staff app onboarding checklist', 'Checklist', 'Checklist', '#6D28D9'], [BookOpen, '#C2410C', 'Demo constituency dataset reference', 'Data sheet', 'Data', '#C2410C']]} />
-        </Card>
-        <Card title="Upcoming trainings">
-          <ListRows items={[[Users, '#6D28D9', 'Campaign agency, Bengaluru', `${fmtDate(day(2))} · Field staff app · 18 users`, 'Online', '#1D4ED8'], [Users, '#6D28D9', 'MLA Office, Kukatpally', `${fmtDate(day(4))} · Admin training · 6 users`, 'Offline', '#C2410C'], [Users, '#6D28D9', 'MP Office, Medak (pilot)', `${fmtDate(day(7))} · Grievance workflow · 10 users`, 'Online', '#1D4ED8']]} />
+        <Card title="Onboarding Configuration" action={<Link to="/onboarding" className="link">Open</Link>}>
+          <div className="bars">
+            {customers.map((c) => {
+              const pct = Math.round((c.steps.filter(Boolean).length / c.steps.length) * 100);
+              return <BarRow key={c.id} label={c.name} value={pct} max={100} color={pct === 100 ? '#2FA84F' : pct >= 40 ? '#F5B819' : '#F07A22'} shown={`${pct}%`} />;
+            })}
+          </div>
         </Card>
       </div>
     </>
   );
 }
 
+const TRAININGS = [['Campaign agency, Bengaluru', 'Field staff app', 18], ['MLA Office, Kukatpally', 'Admin training', 6], ['MP Office, Medak (pilot)', 'Grievance workflow', 10]];
+
 // ---------------------------------------------------------------- Customer Support
 export function CustomerSupport() {
   const { tickets, customers, dispatch } = useData();
+  const { user } = useAuth();
   const toast = useToast();
   const [filter, setFilter] = useState('');
   const [adding, setAdding] = useState(false);
@@ -98,18 +118,18 @@ export function CustomerSupport() {
 
   return (
     <>
-      <PageHead title="Customer support dashboard" sub="Tickets, onboarding, user queries, SLA and renewals.">
-        <Button icon={Plus} onClick={() => setAdding(true)}>New ticket</Button>
-      </PageHead>
+      <DashHero title="Customer Support" greeting={`${greeting()}, ${user.name.split(' ')[0]}!`} sub="Customer onboarding, queries, SLA and renewals.">
+        <button type="button" className="btn btn-saffron btn-lg" onClick={() => setAdding(true)}><Plus size={18} /> New Ticket</button>
+      </DashHero>
       <div className="kpi-row kpi-5">
-        <Kpi icon={Inbox} label="Open tickets" value={open.length} delta={`${open.filter((t) => t.priority === 'High').length} high priority`} color="#B91C1C" />
-        <Kpi icon={Clock} label="In progress" value={tickets.filter((t) => t.status === 'In progress').length} color="#B45309" />
-        <Kpi icon={CheckCircle2} label="Resolved" value={tickets.filter((t) => t.status === 'Resolved').length} color="#0B6B3A" />
-        <Kpi icon={ShieldCheck} label="SLA compliance" value={`${Math.round((tickets.filter((t) => t.slaHours >= 0).length / tickets.length) * 100)}%`} delta="Target 95%" color="#1D4ED8" />
-        <Kpi icon={RefreshCw} label="Renewals due" value={renewals.length} delta="Next 45 days" color="#0F766E" />
+        <ColorKpi icon={Ticket} bg="#FCE7E8" color="#E5484D" value={open.length} label="Open Tickets" note={`${open.filter((t) => t.priority === 'High').length} high priority`} />
+        <ColorKpi icon={Clock} bg="#FDF6D8" color="#F5B819" value={tickets.filter((t) => t.status === 'In progress').length} label="In Progress" note={`${open.filter((t) => t.slaHours >= 0 && t.slaHours <= 2).length} near SLA`} />
+        <ColorKpi icon={CheckCircle2} bg="#E6F5EA" color="#2FA84F" value={tickets.filter((t) => t.status === 'Resolved').length} label="Resolved" note="Tickets closed" />
+        <ColorKpi icon={ShieldCheck} bg="#E8F1FC" color="#2A7DE1" round value={`${Math.round((tickets.filter((t) => t.slaHours >= 0).length / (tickets.length || 1)) * 100)}%`} label="SLA Compliance" note="Target 95%" />
+        <ColorKpi icon={RefreshCw} bg="#E3F7F4" color="#0F9F8F" value={renewals.length} label="Renewals Due" note="Next 45 days" />
       </div>
       <div className="cols cols-main-side">
-        <Card title="Customer tickets" action={<Select aria-label="Filter status" options={['Open', 'In progress', 'Resolved']} value={filter} onChange={setFilter} placeholder="All statuses" />}>
+        <Card title="Customer Tickets" action={<Select aria-label="Filter status" options={['Open', 'In progress', 'Resolved']} value={filter} onChange={setFilter} placeholder="All statuses" />}>
           <div className="table-wrap">
             <table className="table">
               <thead><tr><th>Ticket</th><th>Customer</th><th>Priority</th><th>SLA</th><th>Assigned</th><th>Status</th><th><span className="sr-only">Escalate</span></th></tr></thead>
@@ -129,23 +149,30 @@ export function CustomerSupport() {
             </table>
           </div>
         </Card>
-        <Card title="SLA by priority">
-          {[['High', '4h response', '#B91C1C'], ['Medium', '8h response', '#B45309'], ['Low', '24h response', '#0B6B3A']].map(([p, r, c]) => (
-            <div key={p} className="stack gap-6"><div className="row between small"><span>{p} · {r}</span><b>{sla(p)}%</b></div><Progress value={sla(p)} color={c} /></div>
-          ))}
+        <Card title="SLA by Priority" action={<span className="chip">This month</span>}>
+          <div className="bars">
+            {[['High · 4h', 'High', '#E5484D'], ['Medium · 8h', 'Medium', '#F5B819'], ['Low · 24h', 'Low', '#2FA84F']].map(([label, p, c]) => <BarRow key={p} label={label} value={sla(p)} max={100} color={c} shown={`${sla(p)}%`} />)}
+          </div>
           <p className="muted small">Breached tickets escalate to Technical Support and notify the BDM.</p>
         </Card>
       </div>
-      <div className="cols cols-2">
-        <Card title="Customer health">
-          {customers.map((c) => {
-            const color = c.health >= 80 ? '#0B6B3A' : c.health >= 65 ? '#B45309' : '#B91C1C';
-            return <div key={c.id} className="health"><span className="grow"><b>{c.name}</b><span className="muted small">{c.package}</span></span><span style={{ width: 140 }}><Progress value={c.health} color={color} /></span><b style={{ color, width: 32 }}>{c.health}</b></div>;
-          })}
+      <div className="cols dash-eq">
+        <Card title="Onboarding Progress" action={<Link to="/onboarding" className="link">Open</Link>}>
+          <div className="bars">
+            {customers.map((c) => {
+              const pct = Math.round((c.steps.filter(Boolean).length / c.steps.length) * 100);
+              return <BarRow key={c.id} label={c.name} value={pct} max={100} color={pct === 100 ? '#2FA84F' : pct >= 40 ? '#F5B819' : '#F07A22'} shown={`${pct}%`} />;
+            })}
+          </div>
         </Card>
-        <Card title="Renewal follow-ups">
+        <Card title="Renewal Follow-ups">
           {renewals.length === 0 ? <p className="muted">No renewals in the next 45 days.</p> : (
-            <ListRows items={renewals.map((c) => [RefreshCw, '#0F766E', c.name, `Renews ${fmtDate(c.contractEnd)} · account manager ${firstName(c.accountManager)}`, relDay(c.contractEnd), '#B45309'])} />
+            <ul className="dash-list">
+              {renewals.map((c) => (
+                <DashItem key={c.id} icon={RefreshCw} color={c.health >= 70 ? '#0F9F8F' : '#F07A22'} title={c.name}
+                  sub={`Renews ${fmtDate(c.contractEnd)} · health ${c.health} · ${firstName(c.accountManager)}`} tag={relDay(c.contractEnd)} />
+              ))}
+            </ul>
           )}
         </Card>
       </div>
@@ -227,21 +254,26 @@ export function Onboarding() {
 }
 
 // ---------------------------------------------------------------- Technical Support
+const RESOLVED_PER_WEEK = [['W35', 4], ['W36', 6], ['W37', 5], ['W38', 8], ['W39', 7], ['W40', 9]];
+
 export function TechSupport() {
   const { issues, tickets, dispatch } = useData();
+  const { user } = useAuth();
   const toast = useToast();
   const escalated = tickets.filter((t) => t.escalated && t.status !== 'Resolved');
+  const openIssues = issues.filter((i) => i.status !== 'Resolved');
   return (
     <>
-      <PageHead title="Technical support dashboard" sub="Bugs, integrations, server and system health, security and deployments." />
-      <div className="kpi-row kpi-4">
-        <Kpi icon={AlertTriangle} label="Open issues" value={issues.filter((i) => i.status !== 'Resolved').length} delta={`${issues.filter((i) => i.severity === 'Critical' && i.status !== 'Resolved').length} critical`} color="#B91C1C" />
-        <Kpi icon={Inbox} label="Escalated tickets" value={escalated.length} delta="From Customer Support" color="#B45309" />
-        <Kpi icon={CheckCircle2} label="Resolved issues" value={issues.filter((i) => i.status === 'Resolved').length} color="#0B6B3A" />
-        <Kpi icon={Rocket} label="Next deployment" value="v2.14.0" delta={`${fmtDate(day(4))} · 22:00 IST`} color="#1D4ED8" />
+      <DashHero title="Technical Support" greeting={`${greeting()}, ${user.name.split(' ')[0]}!`} sub="Bug fixes, integrations, server and system support." />
+      <div className="kpi-row kpi-5">
+        <ColorKpi icon={Bug} bg="#FCE7E8" color="#E5484D" value={openIssues.length} label="Open Issues" note={`${openIssues.filter((i) => i.severity === 'Critical').length} critical`} />
+        <ColorKpi icon={Clock} bg="#FDF6D8" color="#F5B819" value={issues.filter((i) => i.status === 'In progress').length} label="In Progress" note={`${escalated.length} escalated tickets`} />
+        <ColorKpi icon={CheckCircle2} bg="#E6F5EA" color="#2FA84F" value={issues.filter((i) => i.status === 'Resolved').length} label="Resolved" note="Issues closed" />
+        <ColorKpi icon={Activity} bg="#E8F1FC" color="#2A7DE1" round value="99.9%" label="Uptime" note="Last 30 days" />
+        <ColorKpi icon={Rocket} bg="#F1EBFB" color="#8A5CD8" value="v2.14.0" label="Next Deployment" note={`${fmtDate(day(4))} · 22:00 IST`} />
       </div>
       <div className="cols cols-main-side">
-        <Card title="Issues and bugs">
+        <Card title="Issues & Escalations">
           <div className="table-wrap">
             <table className="table">
               <thead><tr><th>Issue</th><th>Customer</th><th>Area</th><th>Severity</th><th>Status</th></tr></thead>
@@ -264,19 +296,33 @@ export function TechSupport() {
             </table>
           </div>
         </Card>
-        <Card title="System health" action={<Badge color="#0B6B3A">Live</Badge>}>
-          <ListRows items={SYSTEM_HEALTH.map(([n, s, m]) => [Server, s === 'Operational' ? '#0B6B3A' : '#B45309', n, m, s, s === 'Operational' ? '#0B6B3A' : '#B45309'])} />
+        <Card title="System Health" action={<Badge color="#0B6B3A">Live</Badge>}>
+          <ul className="dash-list">
+            {SYSTEM_HEALTH.map(([n, s, m]) => (
+              <DashItem key={n} icon={Server} color={s === 'Operational' ? '#2FA84F' : '#F07A22'} title={n} sub={m} tag={s} />
+            ))}
+          </ul>
         </Card>
       </div>
-      <div className="cols cols-2">
-        <Card title="Integrations">
-          <ListRows items={[[MessageCircle, '#0F766E', 'WhatsApp Business API', '4 customers connected', 'Degraded', '#B45309'], [Mail, '#1D4ED8', 'SMS gateway (DLT templates)', '6 customers connected', 'Healthy', '#0B6B3A'], [Code2, '#6D28D9', 'Public REST API', '2 consultants connected', 'Healthy', '#0B6B3A'], [KeyRound, '#0F1F3A', 'SSO / OTP login', 'All customers', 'Healthy', '#0B6B3A']]} />
+      <div className="cols dash-eq">
+        <Card title="Issues Resolved per Week" action={<span className="chip">Last 6 weeks</span>}>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={RESOLVED_PER_WEEK.map(([w, v]) => ({ w, v }))} margin={{ top: 18, left: -24, right: 0 }}>
+              <XAxis dataKey="w" tick={{ fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#D5D3CB' }} />
+              <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip cursor={{ fill: '#F6F5F1' }} />
+              <Bar dataKey="v" name="Resolved" fill="#2A7DE1" barSize={30} radius={[3, 3, 0, 0]} label={{ position: 'top', fontSize: 11, fontWeight: 600 }} />
+            </BarChart>
+          </ResponsiveContainer>
         </Card>
         <Card title="Deployments">
-          <ListRows items={[[Rocket, '#1D4ED8', 'v2.14.0 · grievance SLA timers', `${fmtDate(day(4))} · staging passed`, 'Scheduled', '#1D4ED8'], [Rocket, '#0B6B3A', 'v2.13.2 · booth sync hotfix', fmtDate(day(-4)), 'Deployed', '#0B6B3A'], [Rocket, '#0B6B3A', 'v2.13.1 · Telugu SMS encoding fix', fmtDate(day(-7)), 'Deployed', '#0B6B3A']]} />
+          <ul className="dash-list">
+            <DashItem icon={Rocket} color="#8A5CD8" title="v2.14.0 · grievance SLA timers" sub={`${fmtDate(day(4))} · staging passed`} tag="Scheduled" />
+            <DashItem icon={Rocket} color="#2FA84F" title="v2.13.2 · booth sync hotfix" sub={fmtDate(day(-4))} tag="Deployed" />
+            <DashItem icon={Rocket} color="#2FA84F" title="v2.13.1 · Telugu SMS encoding fix" sub={fmtDate(day(-7))} tag="Deployed" />
+          </ul>
         </Card>
       </div>
     </>
   );
 }
-

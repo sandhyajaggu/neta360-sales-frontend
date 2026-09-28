@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { ArrowUp, X } from 'lucide-react';
 import { initials, PRIORITY_COLOR, stageColor } from '../utils/format';
 
 export const Badge = ({ color = '#6B7280', children, title }) => (
@@ -164,3 +164,53 @@ export const KV = ({ items, cols = 2 }) => (
     ))}
   </dl>
 );
+
+// ---- Role dashboards: shared header, coloured KPI tile and labelled progress row.
+
+export function DashHero({ title, greeting, sub, children }) {
+  return (
+    <section className="bh-hero dash-hero">
+      <div>
+        <h1><span className="n">Neta</span><span className="t">360</span> {title}</h1>
+        <h2>{greeting}</h2>
+        <p>{sub}</p>
+      </div>
+      {children && <div className="dash-hero-actions">{children}</div>}
+    </section>
+  );
+}
+
+export function ColorKpi({ icon: Icon, bg, color, value, label, note, up, round }) {
+  return (
+    <div className="bh-kpi" style={{ background: bg }}>
+      <span className="bh-kpi-ic" style={{ background: color, color: '#fff', borderRadius: round ? '50%' : 10 }}>
+        <Icon size={24} aria-hidden="true" />
+      </span>
+      <b>{value}</b>
+      <span className="bh-kpi-l">{label}</span>
+      {note && <span className="bh-kpi-d">{up && <ArrowUp size={14} aria-hidden="true" />}{note}</span>}
+    </div>
+  );
+}
+
+export function BarRow({ label, value, max, color, shown }) {
+  return (
+    <div className="bar-row">
+      <span>{label}</span>
+      <span className="bar-track"><i style={{ width: `${Math.min(100, (value / (max || 1)) * 100)}%`, background: color }} /></span>
+      <b>{shown ?? value}</b>
+    </div>
+  );
+}
+
+// Icon bubble + title/subtitle + status tag, used by the role dashboards' lists.
+export function DashItem({ icon: Icon, color, title, sub, tag, tagColor, onClick }) {
+  const body = (
+    <>
+      <span className="dash-ico" style={{ background: `${color}1A`, color }}><Icon size={18} aria-hidden="true" /></span>
+      <span className="dash-w">{title}<small>{sub}</small></span>
+      {tag && <span className="dash-tag" style={{ background: `${tagColor || color}1A`, color: tagColor || color }}>{tag}</span>}
+    </>
+  );
+  return <li>{onClick ? <button type="button" className="dash-row" onClick={onClick}>{body}</button> : <span className="dash-row">{body}</span>}</li>;
+}
